@@ -2,10 +2,7 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
@@ -22,7 +19,7 @@ import java.security.spec.X509EncodedKeySpec;
 
 public class Client {
     private final String LICENSE_FILE_PATH = "license.txt";
-    private final String KEYS_PATH = "keys/";
+    private final String KEYS_PATH = "../keys/";
     private PublicKey publicKey;
     private String username;
     private String serialNumber;
@@ -32,7 +29,7 @@ public class Client {
     private String license;
 
     public Client() {
-        setUsername(System.getProperty("user.name"));
+
 
         licenseFileChecker();
 
@@ -54,12 +51,12 @@ public class Client {
         if (licenseFile.exists()) {
 
         } else {
+            setUsername(System.getProperty("user.name"));
+            setSerialNumber();
             setMacAddress();
             setDiskSerialNumber();
             setMotherboardSerialNumber();
-
             setPublicKey();
-
         }
     }
 
@@ -68,9 +65,8 @@ public class Client {
             Cipher encryptCipher = Cipher.getInstance("RSA");
             encryptCipher.init(Cipher.ENCRYPT_MODE, publicKey);
             byte[] secretMessageBytes = license.getBytes(StandardCharsets.UTF_8);
-            byte[] encryptedLicenseBytes = encryptCipher.doFinal(secretMessageBytes);
 
-            return encryptedLicenseBytes;
+            return encryptCipher.doFinal(secretMessageBytes);
         } catch (NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException | IllegalBlockSizeException |
                 BadPaddingException exception) {
             exception.printStackTrace();
@@ -107,8 +103,13 @@ public class Client {
         return serialNumber;
     }
 
-    public void setSerialNumber(String serialNumber) {
-        this.serialNumber = serialNumber;
+    public void setSerialNumber() {
+        try {
+            BufferedReader reader = new BufferedReader(new FileReader("user_serial.txt"));
+            this.serialNumber = reader.readLine();
+        } catch (IOException ioException) {
+            ioException.printStackTrace();
+        }
     }
 
     public String getMacAddress() {
