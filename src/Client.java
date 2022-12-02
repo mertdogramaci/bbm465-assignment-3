@@ -11,8 +11,6 @@ import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.FileStore;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.InvalidKeyException;
@@ -170,8 +168,7 @@ public class Client {
                 if (line.length() < 1 || line.startsWith("SerialNumber")) {
                     continue;
                 }
-                serialNumber = line;
-                break;
+                serialNumber = line.replaceAll("\\s+","");
             }
 
             br.close();
