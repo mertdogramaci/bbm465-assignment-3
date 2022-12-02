@@ -169,7 +169,6 @@ public class Client {
                     continue;
                 }
                 serialNumber = line.replaceAll("\\s+","");
-                break;
             }
 
             br.close();
