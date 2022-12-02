@@ -74,7 +74,7 @@ public class Client {
 
             return encryptedLicenseBytes;
         } catch (NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException | IllegalBlockSizeException |
-                 BadPaddingException exception) {
+                BadPaddingException exception) {
             exception.printStackTrace();
         }
 
@@ -140,17 +140,8 @@ public class Client {
     }
 
     public void setDiskSerialNumber() {
-        String diskSerialNumber = "";
-
-        FileStore store = FileSystems.getDefault().getFileStores().iterator().next();   // TODO: What if two disks exist?
-
-        try {
-            diskSerialNumber = store.getAttribute("volume:vsn").toString();
-        } catch (IOException ioException) {
-            ioException.printStackTrace();
-        }
-
-        this.diskSerialNumber = diskSerialNumber;
+        String command = "wmic diskdrive get serialnumber";
+        this.diskSerialNumber = "-"+findSerialNumber(command);
     }
 
     public String getMotherboardSerialNumber() {
@@ -159,7 +150,14 @@ public class Client {
 
     public void setMotherboardSerialNumber() {
         String command = "wmic baseboard get serialnumber";
+        this.motherboardSerialNumber = findSerialNumber(command);
+    }
 
+    public String getLicense() {
+        return license;
+    }
+
+    public String findSerialNumber(String command){
         String serialNumber = "";
 
         try {
@@ -180,12 +178,7 @@ public class Client {
         } catch (IOException ioException) {
             ioException.printStackTrace();
         }
-
-        this.motherboardSerialNumber = serialNumber;
-    }
-
-    public String getLicense() {
-        return license;
+        return serialNumber;
     }
 
     public void setLicense(String license) {
