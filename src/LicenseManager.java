@@ -19,7 +19,7 @@ public class LicenseManager {
             byte[] decryptedMessageBytes = decryptCipher.doFinal(encryptedLicenseBytes);
             String decryptedMessage = new String(decryptedMessageBytes, StandardCharsets.UTF_8);
         } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | BadPaddingException |
-                 IllegalBlockSizeException exception) {
+                IllegalBlockSizeException exception) {
             exception.printStackTrace();
         }
     }
