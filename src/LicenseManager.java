@@ -38,8 +38,6 @@ public class LicenseManager {
             BigInteger bigInt = new BigInteger(1,digest);
             String hashText = bigInt.toString(16);
 
-            System.out.println(hashText);
-
             Signature signature = Signature.getInstance("SHA256withRSA");
             signature.initSign(privateKey);
             signature.update(hashText.getBytes());

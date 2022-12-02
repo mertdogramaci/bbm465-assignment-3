@@ -3,6 +3,7 @@ import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import java.io.*;
+import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
@@ -10,10 +11,7 @@ import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.security.InvalidKeyException;
-import java.security.KeyFactory;
-import java.security.NoSuchAlgorithmException;
-import java.security.PublicKey;
+import java.security.*;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 
@@ -29,8 +27,6 @@ public class Client {
     private String license;
 
     public Client() {
-
-
         licenseFileChecker();
 
         setLicense(username + "$" +
@@ -39,11 +35,32 @@ public class Client {
                 diskSerialNumber + "$" +
                 motherboardSerialNumber);
 
-        System.out.println(getLicense());
+        System.out.println("in Client:\t\t\t\t" + getLicense());
 
         byte[] encryptedLicenseBytes = getEncryptedLicense();
 
         LicenseManager licenseManager = new LicenseManager(encryptedLicenseBytes);
+        byte[] response = licenseManager.getDigitalSignature();
+
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            md.update(encryptedLicenseBytes);
+            byte[] digest = md.digest();
+            BigInteger bigInt = new BigInteger(1,digest);
+            String hashText = bigInt.toString(16);
+
+            System.out.println(hashText);
+
+            Signature signature = Signature.getInstance("SHA256withRSA");
+            signature.initVerify(publicKey);
+            signature.update(getLicense().getBytes());
+            boolean verify = signature.verify(response);
+
+            System.out.println(verify);
+
+        } catch (NoSuchAlgorithmException | SignatureException | InvalidKeyException exception) {
+            exception.printStackTrace();
+        }
     }
 
     private void licenseFileChecker() {
