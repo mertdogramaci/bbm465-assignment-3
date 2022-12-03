@@ -14,6 +14,8 @@ import java.nio.file.Paths;
 import java.security.*;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.Arrays;
+import java.util.Base64;
 
 public class Client {
     private final String LICENSE_FILE_PATH = "license.txt";
@@ -44,16 +46,15 @@ public class Client {
 
         try {
             MessageDigest md = MessageDigest.getInstance("MD5");
-            md.update(getLicense().getBytes());
+            md.update(getLicense().getBytes());// encrypted değil direkt license textini hashliyoruz
             byte[] digest = md.digest();
-            BigInteger bigInt = new BigInteger(1,digest);
-            String hashText = bigInt.toString(16);
+            String hashText = Base64.getEncoder().encodeToString(digest);
 
             System.out.println(hashText);
 
             Signature signature = Signature.getInstance("SHA256withRSA");
             signature.initVerify(publicKey);
-            signature.update(hashText.getBytes());
+            signature.update(digest);// burayı düzeltince true ya döndü hashlenmiş text leri  verify yapıyoruz
             boolean verify = signature.verify(response);
 
             System.out.println(verify);
