@@ -188,6 +188,7 @@ public class Client {
                     continue;
                 }
                 serialNumber = line.replaceAll("\\s+","");
+                //try
             }
 
             br.close();
