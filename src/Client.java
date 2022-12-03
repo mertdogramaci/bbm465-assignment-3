@@ -44,7 +44,7 @@ public class Client {
 
         try {
             MessageDigest md = MessageDigest.getInstance("MD5");
-            md.update(encryptedLicenseBytes);
+            md.update(getLicense().getBytes());
             byte[] digest = md.digest();
             BigInteger bigInt = new BigInteger(1,digest);
             String hashText = bigInt.toString(16);
@@ -53,7 +53,7 @@ public class Client {
 
             Signature signature = Signature.getInstance("SHA256withRSA");
             signature.initVerify(publicKey);
-            signature.update(getLicense().getBytes());
+            signature.update(hashText.getBytes());
             boolean verify = signature.verify(response);
 
             System.out.println(verify);
