@@ -11,6 +11,7 @@ import java.security.*;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.Base64;
 
 public class LicenseManager {
     private PrivateKey privateKey;
@@ -33,14 +34,15 @@ public class LicenseManager {
             // decryptedMessage = "abt$1234-5678-9012$F0:2F:74:15:F1:CD$-455469999$201075710502043";    TODO: for testing
 
             MessageDigest md = MessageDigest.getInstance("MD5");
-            md.update(decryptedMessage.getBytes());
+            md.update(decryptedMessage.getBytes());// decrypt ederek license texte ceviriyoruz ve hashliyoruz
             byte[] digest = md.digest();
-            BigInteger bigInt = new BigInteger(1,digest);
-            String hashText = bigInt.toString(16);
+
+            String hashText = Base64.getEncoder().encodeToString(digest);
+            System.out.println(hashText);
 
             Signature signature = Signature.getInstance("SHA256withRSA");
             signature.initSign(privateKey);
-            signature.update(hashText.getBytes());
+            signature.update(digest);// hashlenmis veiriyi sign ediyoruz
             byte[] signatureBytes = signature.sign();
 
             setDigitalSignature(signatureBytes);
