@@ -3,6 +3,7 @@ import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import java.io.*;
+import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
@@ -30,6 +31,7 @@ public class Client {
 
     public Client() {
         System.out.println("Client started...");
+
         setProperties();
         licenseFileChecker();
     }
@@ -37,48 +39,60 @@ public class Client {
     private void setProperties(){
         setUsername(System.getProperty("user.name"));
         setSerialNumber();
+
         setMacAddress();
-        System.out.println("My MAC: "+getMacAddress());
+        System.out.println("My MAC: " + getMacAddress());
+
         setDiskSerialNumber();
-        System.out.println("My Disk ID: "+getDiskSerialNumber());
+        System.out.println("My Disk ID: " + getDiskSerialNumber());
+
         setMotherboardSerialNumber();
-        System.out.println("My Motherboard ID: "+getMotherboardSerialNumber());
+        System.out.println("My Motherboard ID: " + getMotherboardSerialNumber());
+
         setPublicKey();
+
         setRawLicense(username + "$" +
                 serialNumber + "$" +
                 macAddress + "$" +
                 diskSerialNumber + "$" +
                 motherboardSerialNumber);
+
         setEncryptedLicense();
         setHashedLicense();
     }
 
-    private void licenseFileChecker(){
+    private void licenseFileChecker() {
         System.out.println("LicenseManager service started...");
-        try{
+
+        try {
             File licenseFile = new File(LICENSE_FILE_PATH);
+
             if (licenseFile.exists()) {
                 byte[] licenseText = Files.readAllBytes(Paths.get(LICENSE_FILE_PATH));
-                if(verify(licenseText)){
+
+                if (verify(licenseText)) {
                     System.out.println("Client -- Succeed. The license is correct.");
-                }else{
+                } else {
                     System.out.println("Client -- The license file has been broken!!");
                     managerRequest();
                 }
             } else {
                 System.out.println("Client -- License File is not found.");
-                System.out.println("Client -- Raw License Text: "+getRawLicense());
-                System.out.println("Client -- Encrypted License Text: "+ Base64.getEncoder().encodeToString(getEncryptedLicense()));
-                System.out.println("Client -- MD5 License Text: "+ Base64.getEncoder().encodeToString(getHashedLicense()));
+                System.out.println("Client -- Raw License Text: " + getRawLicense());
+                System.out.println("Client -- Encrypted License Text: " + Base64.getEncoder().encodeToString(getEncryptedLicense()));
+
+                BigInteger bigIntHashedLicense = new BigInteger(1, getHashedLicense());
+                String bigIntHashedLicenseText = bigIntHashedLicense.toString(16);
+                System.out.println("Client -- MD5 License Text: " + bigIntHashedLicenseText);
+
                 managerRequest();
             }
-        }catch(IOException exception){
+        } catch (IOException exception) {
             exception.printStackTrace();
         }
-
     }
 
-    public String findSerialNumber(String command){
+    public String findSerialNumber(String command) {
         String serialNumber = "";
 
         try {
@@ -98,6 +112,7 @@ public class Client {
         } catch (IOException ioException) {
             ioException.printStackTrace();
         }
+
         return serialNumber;
     }
 
@@ -110,8 +125,8 @@ public class Client {
             Cipher encryptCipher = Cipher.getInstance("RSA");
             encryptCipher.init(Cipher.ENCRYPT_MODE, publicKey);
             byte[] secretMessageBytes = rawLicense.getBytes(StandardCharsets.UTF_8);
-            this.encryptedLicense = encryptCipher.doFinal(secretMessageBytes);
 
+            this.encryptedLicense = encryptCipher.doFinal(secretMessageBytes);
         } catch (NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException | IllegalBlockSizeException |
                 BadPaddingException exception) {
             exception.printStackTrace();
@@ -123,8 +138,8 @@ public class Client {
     }
 
     public void setHashedLicense() {
-        try{
-            //Hashing
+        try {
+            // Hashing
             MessageDigest md = MessageDigest.getInstance("MD5");
             md.update(getRawLicense().getBytes());
             this.hashedLicense = md.digest();
@@ -135,18 +150,17 @@ public class Client {
     }
 
     public void managerRequest() {
-        try{
+        try {
             LicenseManager licenseManager = new LicenseManager(encryptedLicense);
             byte[] response = licenseManager.getDigitalSignature();
             //Verification
-            if(verify(response)){
+            if (verify(response)) {
                 System.out.println("Client -- Succeed. The license file content is secured and signed by the server.");
-                // license.txt oluşturup onun üstüne response u yazdıracaz.
                 FileOutputStream outputStream = new FileOutputStream(LICENSE_FILE_PATH);
                 outputStream.write(response);
                 outputStream.close();
             }
-        }catch(IOException exception){
+        } catch(IOException exception) {
             exception.printStackTrace();
         }
 
@@ -154,13 +168,14 @@ public class Client {
 
     public boolean verify(byte[] response){
         try {
-            //Verification
+            // Verification
             Signature signature = Signature.getInstance("SHA256withRSA");
             signature.initVerify(publicKey);
             signature.update(hashedLicense);
             return signature.verify(response);
 
         } catch (NoSuchAlgorithmException | SignatureException | InvalidKeyException exception) {
+            exception.printStackTrace();
             return false;
         }
     }

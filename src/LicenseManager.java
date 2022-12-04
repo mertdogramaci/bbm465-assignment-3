@@ -21,18 +21,19 @@ public class LicenseManager {
 
     public LicenseManager(byte[] encryptedLicense) {
         System.out.println("Server is being requested...");
+
         setPublicKey();
         setPrivateKey();
         System.out.println("Server -- Incoming Encrypted Text: "+ Base64.getEncoder().encodeToString(encryptedLicense));
         String decryptedMessage = decryptText(encryptedLicense);
         System.out.println("Server -- Decrypted Text: "+ decryptedMessage);
 
-        // decryptedMessage = "abt$1234-5678-9012$F0:2F:74:15:F1:CD$-455469999$201075710502043";    TODO: for testing
-
         byte[] digest = hashing(decryptedMessage);
-        System.out.println("Server -- MD5 Plain License Text: "+ Base64.getEncoder().encodeToString(digest));
-        createDigitalSignature(digest);
+        BigInteger bigInt = new BigInteger(1, digest);
+        String hashText = bigInt.toString(16);
+        System.out.println("Server -- MD5 Plain License Text: " + hashText);
 
+        createDigitalSignature(digest);
     }
 
     public void createDigitalSignature(byte[] bytesOfText){
@@ -62,10 +63,12 @@ public class LicenseManager {
     }
 
     public String decryptText(byte[] encryptedText){
-        try{Cipher decryptCipher = Cipher.getInstance("RSA");
-        decryptCipher.init(Cipher.DECRYPT_MODE, privateKey);
-        byte[] decryptedMessageBytes = decryptCipher.doFinal(encryptedText);
-        return new String(decryptedMessageBytes, StandardCharsets.UTF_8);
+        try{
+            Cipher decryptCipher = Cipher.getInstance("RSA");
+            decryptCipher.init(Cipher.DECRYPT_MODE, privateKey);
+            byte[] decryptedMessageBytes = decryptCipher.doFinal(encryptedText);
+
+            return new String(decryptedMessageBytes, StandardCharsets.UTF_8);
         }catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | BadPaddingException |
                 IllegalBlockSizeException exception) {
             exception.printStackTrace();
