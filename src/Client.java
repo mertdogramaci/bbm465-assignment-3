@@ -3,7 +3,6 @@ import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import java.io.*;
-import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
@@ -14,7 +13,6 @@ import java.nio.file.Paths;
 import java.security.*;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
-import java.util.Arrays;
 import java.util.Base64;
 
 public class Client {
@@ -26,71 +24,145 @@ public class Client {
     private String macAddress;
     private String diskSerialNumber;
     private String motherboardSerialNumber;
-    private String license;
+    private String rawLicense;
+    private byte[] encryptedLicense;
+    private byte[] hashedLicense;
 
     public Client() {
+        System.out.println("Client started...");
+        setProperties();
         licenseFileChecker();
+    }
 
-        setLicense(username + "$" +
+    private void setProperties(){
+        setUsername(System.getProperty("user.name"));
+        setSerialNumber();
+        setMacAddress();
+        System.out.println("My MAC: "+getMacAddress());
+        setDiskSerialNumber();
+        System.out.println("My Disk ID: "+getDiskSerialNumber());
+        setMotherboardSerialNumber();
+        System.out.println("My Motherboard ID: "+getMotherboardSerialNumber());
+        setPublicKey();
+        setRawLicense(username + "$" +
                 serialNumber + "$" +
                 macAddress + "$" +
                 diskSerialNumber + "$" +
                 motherboardSerialNumber);
+        setEncryptedLicense();
+        setHashedLicense();
+    }
 
-        System.out.println("in Client:\t\t\t\t" + getLicense());
-
-        byte[] encryptedLicenseBytes = getEncryptedLicense();
-
-        LicenseManager licenseManager = new LicenseManager(encryptedLicenseBytes);
-        byte[] response = licenseManager.getDigitalSignature();
-
-        try {
-            MessageDigest md = MessageDigest.getInstance("MD5");
-            md.update(getLicense().getBytes());// encrypted değil direkt license textini hashliyoruz
-            byte[] digest = md.digest();
-            String hashText = Base64.getEncoder().encodeToString(digest);
-
-            System.out.println(hashText);
-
-            Signature signature = Signature.getInstance("SHA256withRSA");
-            signature.initVerify(publicKey);
-            signature.update(digest);// burayı düzeltince true ya döndü hashlenmiş text leri  verify yapıyoruz
-            boolean verify = signature.verify(response);
-
-            System.out.println(verify);
-
-        } catch (NoSuchAlgorithmException | SignatureException | InvalidKeyException exception) {
+    private void licenseFileChecker(){
+        System.out.println("LicenseManager service started...");
+        try{
+            File licenseFile = new File(LICENSE_FILE_PATH);
+            if (licenseFile.exists()) {
+                byte[] licenseText = Files.readAllBytes(Paths.get(LICENSE_FILE_PATH));
+                if(verify(licenseText)){
+                    System.out.println("Client -- Succeed. The license is correct.");
+                }else{
+                    System.out.println("Client -- The license file has been broken!!");
+                    managerRequest();
+                }
+            } else {
+                System.out.println("Client -- License File is not found.");
+                System.out.println("Client -- Raw License Text: "+getRawLicense());
+                System.out.println("Client -- Encrypted License Text: "+ Base64.getEncoder().encodeToString(getEncryptedLicense()));
+                System.out.println("Client -- MD5 License Text: "+ Base64.getEncoder().encodeToString(getHashedLicense()));
+                managerRequest();
+            }
+        }catch(IOException exception){
             exception.printStackTrace();
         }
+
     }
 
-    private void licenseFileChecker() {
-        File licenseFile = new File(LICENSE_FILE_PATH);
-        if (licenseFile.exists()) {
+    public String findSerialNumber(String command){
+        String serialNumber = "";
 
-        } else {
-            setUsername(System.getProperty("user.name"));
-            setSerialNumber();
-            setMacAddress();
-            setDiskSerialNumber();
-            setMotherboardSerialNumber();
-            setPublicKey();
+        try {
+            Process SerialNumberProcess = Runtime.getRuntime().exec(command);
+
+            InputStreamReader ISR = new InputStreamReader(SerialNumberProcess.getInputStream());
+            BufferedReader br = new BufferedReader(ISR);
+
+            for (String line = br.readLine(); line != null; line = br.readLine()) {
+                if (line.length() < 1 || line.startsWith("SerialNumber")) {
+                    continue;
+                }
+                serialNumber = line.replaceAll("\\s+","");
+            }
+
+            br.close();
+        } catch (IOException ioException) {
+            ioException.printStackTrace();
         }
+        return serialNumber;
     }
 
-    private byte[] getEncryptedLicense() {
+    public byte[] getEncryptedLicense() {
+        return this.encryptedLicense;
+    }
+
+    public void setEncryptedLicense() {
         try {
             Cipher encryptCipher = Cipher.getInstance("RSA");
             encryptCipher.init(Cipher.ENCRYPT_MODE, publicKey);
-            byte[] secretMessageBytes = license.getBytes(StandardCharsets.UTF_8);
+            byte[] secretMessageBytes = rawLicense.getBytes(StandardCharsets.UTF_8);
+            this.encryptedLicense = encryptCipher.doFinal(secretMessageBytes);
 
-            return encryptCipher.doFinal(secretMessageBytes);
         } catch (NoSuchPaddingException | NoSuchAlgorithmException | InvalidKeyException | IllegalBlockSizeException |
                 BadPaddingException exception) {
             exception.printStackTrace();
         }
+    }
 
-        return new byte[0];
+    public byte[] getHashedLicense() {
+        return hashedLicense;
+    }
+
+    public void setHashedLicense() {
+        try{
+            //Hashing
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            md.update(getRawLicense().getBytes());
+            this.hashedLicense = md.digest();
+        }catch (NoSuchAlgorithmException exception) {
+            exception.printStackTrace();
+        }
+
+    }
+
+    public void managerRequest() {
+        try{
+            LicenseManager licenseManager = new LicenseManager(encryptedLicense);
+            byte[] response = licenseManager.getDigitalSignature();
+            //Verification
+            if(verify(response)){
+                System.out.println("Client -- Succeed. The license file content is secured and signed by the server.");
+                // license.txt oluşturup onun üstüne response u yazdıracaz.
+                FileOutputStream outputStream = new FileOutputStream(LICENSE_FILE_PATH);
+                outputStream.write(response);
+                outputStream.close();
+            }
+        }catch(IOException exception){
+            exception.printStackTrace();
+        }
+
+    }
+
+    public boolean verify(byte[] response){
+        try {
+            //Verification
+            Signature signature = Signature.getInstance("SHA256withRSA");
+            signature.initVerify(publicKey);
+            signature.update(hashedLicense);
+            return signature.verify(response);
+
+        } catch (NoSuchAlgorithmException | SignatureException | InvalidKeyException exception) {
+            return false;
+        }
     }
 
     public PublicKey getPublicKey() {
@@ -170,40 +242,15 @@ public class Client {
         this.motherboardSerialNumber = findSerialNumber(command);
     }
 
-    public String getLicense() {
-        return license;
+    public String getRawLicense() {
+        return rawLicense;
     }
 
-    public String findSerialNumber(String command){
-        String serialNumber = "";
-
-        try {
-            Process SerialNumberProcess = Runtime.getRuntime().exec(command);
-
-            InputStreamReader ISR = new InputStreamReader(SerialNumberProcess.getInputStream());
-            BufferedReader br = new BufferedReader(ISR);
-
-            for (String line = br.readLine(); line != null; line = br.readLine()) {
-                if (line.length() < 1 || line.startsWith("SerialNumber")) {
-                    continue;
-                }
-                serialNumber = line.replaceAll("\\s+","");
-                //try
-            }
-
-            br.close();
-        } catch (IOException ioException) {
-            ioException.printStackTrace();
-        }
-        return serialNumber;
-    }
-
-    public void setLicense(String license) {
-        this.license = license;
+    public void setRawLicense(String license) {
+        this.rawLicense = license;
     }
 
     public static void main(String[] args) {
-        System.out.println("Hello world!");
         new Client();
     }
 }

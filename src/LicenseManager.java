@@ -19,36 +19,57 @@ public class LicenseManager {
     private final String KEYS_PATH = "../keys/";
     private byte[] digitalSignature;
 
-    public LicenseManager(byte[] encryptedLicenseBytes) {
+    public LicenseManager(byte[] encryptedLicense) {
+        System.out.println("Server is being requested...");
         setPublicKey();
         setPrivateKey();
+        System.out.println("Server -- Incoming Encrypted Text: "+ Base64.getEncoder().encodeToString(encryptedLicense));
+        String decryptedMessage = decryptText(encryptedLicense);
+        System.out.println("Server -- Decrypted Text: "+ decryptedMessage);
 
-        try {
-            Cipher decryptCipher = Cipher.getInstance("RSA");
-            decryptCipher.init(Cipher.DECRYPT_MODE, privateKey);
-            byte[] decryptedMessageBytes = decryptCipher.doFinal(encryptedLicenseBytes);
-            String decryptedMessage = new String(decryptedMessageBytes, StandardCharsets.UTF_8);
+        // decryptedMessage = "abt$1234-5678-9012$F0:2F:74:15:F1:CD$-455469999$201075710502043";    TODO: for testing
 
-            System.out.println("in License Manager:\t\t" + decryptedMessage);
+        byte[] digest = hashing(decryptedMessage);
+        System.out.println("Server -- MD5 Plain License Text: "+ Base64.getEncoder().encodeToString(digest));
+        createDigitalSignature(digest);
 
-            // decryptedMessage = "abt$1234-5678-9012$F0:2F:74:15:F1:CD$-455469999$201075710502043";    TODO: for testing
+    }
 
-            MessageDigest md = MessageDigest.getInstance("MD5");
-            md.update(decryptedMessage.getBytes());// decrypt ederek license texte ceviriyoruz ve hashliyoruz
-            byte[] digest = md.digest();
-
-            String hashText = Base64.getEncoder().encodeToString(digest);
-            System.out.println(hashText);
-
+    public void createDigitalSignature(byte[] bytesOfText){
+        try{
             Signature signature = Signature.getInstance("SHA256withRSA");
             signature.initSign(privateKey);
-            signature.update(digest);// hashlenmis veiriyi sign ediyoruz
+            signature.update(bytesOfText);
             byte[] signatureBytes = signature.sign();
-
             setDigitalSignature(signatureBytes);
-        } catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | BadPaddingException |
-                 IllegalBlockSizeException | SignatureException exception) {
+            System.out.println("Server -- Digital Signature: "+ Base64.getEncoder().encodeToString(signatureBytes));
+        }catch(NoSuchAlgorithmException | InvalidKeyException | SignatureException exception){
             exception.printStackTrace();
+        }
+
+    }
+
+    public byte[] hashing(String textToBeHashed){
+        try{
+            //Hashing
+;           MessageDigest md = MessageDigest.getInstance("MD5");
+            md.update(textToBeHashed.getBytes());
+            return md.digest();
+        }catch (NoSuchAlgorithmException exception) {
+            exception.printStackTrace();
+        }
+        return null;
+    }
+
+    public String decryptText(byte[] encryptedText){
+        try{Cipher decryptCipher = Cipher.getInstance("RSA");
+        decryptCipher.init(Cipher.DECRYPT_MODE, privateKey);
+        byte[] decryptedMessageBytes = decryptCipher.doFinal(encryptedText);
+        return new String(decryptedMessageBytes, StandardCharsets.UTF_8);
+        }catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | BadPaddingException |
+                IllegalBlockSizeException exception) {
+            exception.printStackTrace();
+            return "";
         }
     }
 
