@@ -105,7 +105,7 @@ public class Client {
                 if (line.length() < 1 || line.startsWith("SerialNumber")) {
                     continue;
                 }
-                serialNumber = line.replaceAll("\\s+","");
+                serialNumber = line.replaceFirst("\\s++$", "");
             }
 
             br.close();
@@ -175,7 +175,6 @@ public class Client {
             return signature.verify(response);
 
         } catch (NoSuchAlgorithmException | SignatureException | InvalidKeyException exception) {
-            exception.printStackTrace();
             return false;
         }
     }
