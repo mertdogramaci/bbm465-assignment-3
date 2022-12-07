@@ -28,6 +28,7 @@ public class Client {
     private String rawLicense;
     private byte[] encryptedLicense;
     private byte[] hashedLicense;
+    private LicenseManager licenseManager;
 
     public Client() {
         System.out.println("Client started...");
@@ -63,7 +64,7 @@ public class Client {
     }
 
     private void licenseFileChecker() {
-        System.out.println("LicenseManager service started...");
+        licenseManager = new LicenseManager();
 
         try {
             File licenseFile = new File(LICENSE_FILE_PATH);
@@ -152,7 +153,7 @@ public class Client {
 
     public void managerRequest() {
         try {
-            LicenseManager licenseManager = new LicenseManager(encryptedLicense);
+            licenseManager.requestServer(encryptedLicense);
             byte[] response = licenseManager.getDigitalSignature();
             //Verification
             if (verify(response)) {

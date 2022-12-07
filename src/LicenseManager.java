@@ -19,7 +19,11 @@ public class LicenseManager {
     private final String KEYS_PATH = "../keys/";
     private byte[] digitalSignature;
 
-    public LicenseManager(byte[] encryptedLicense) {
+    public LicenseManager() {
+        System.out.println("LicenseManager service started...");
+    }
+
+    public void requestServer(byte[] encryptedLicense) {
         System.out.println("Server is being requested...");
 
         setPublicKey();
