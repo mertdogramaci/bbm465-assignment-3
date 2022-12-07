@@ -38,6 +38,7 @@ public class Client {
 
     private void setProperties(){
         setUsername(System.getProperty("user.name"));
+
         setSerialNumber();
 
         setMacAddress();
@@ -105,7 +106,7 @@ public class Client {
                 if (line.length() < 1 || line.startsWith("SerialNumber")) {
                     continue;
                 }
-                serialNumber = line.replaceFirst("\\s++$", "");
+                serialNumber = line;
             }
 
             br.close();
@@ -212,7 +213,8 @@ public class Client {
             BufferedReader reader = new BufferedReader(new FileReader("user_serial.txt"));
             this.serialNumber = reader.readLine();
         } catch (IOException ioException) {
-            ioException.printStackTrace();
+            System.out.println("Please be sure that your serial number file exists in the correct location");
+            System.exit(0);
         }
     }
 
